@@ -1,29 +1,76 @@
 import boto3
 import pandas as pd
+import pymysql
 import os
-from datetime import datetime
 
+# Inicializar cliente de S3
 s3 = boto3.client('s3')
 
+# Configuração do banco de dados RDS
+DB_HOST = os.environ['DB_HOST']  # Endpoint do RDS (sem o "http://")
+DB_USER = os.environ['DB_USER']
+DB_PASSWORD = os.environ['DB_PASSWORD']
+DB_NAME = os.environ['DB_NAME']
+
+# Tipos de veículos de interesse
+VEHICLES = ['automovel', 'bicicleta', 'caminhao', 'moto', 'onibus']
+
 def handler(event, context):
-    bucket = event['bucket_name']
-    file_key = event['file_key']
-    
-    # Descargar archivo del S3
-    response = s3.get_object(Bucket=bucket, Key=file_key)
-    data = pd.read_csv(response['Body'])
-    
-    # Filtrar y calcular
-    vehicles = ['automovel', 'bicicleta', 'caminhao', 'moto', 'onibus']
-    filtered_data = data[data['vehicle'].isin(vehicles)]
-    deaths_by_vehicle = filtered_data.groupby('vehicle')['number_deaths'].sum().reset_index()
-    
-    # Guardar en base de datos (simulado con impresión)
-    for _, row in deaths_by_vehicle.iterrows():
-        print({
-            "created_at": datetime.now().isoformat(),
-            "vehicle": row['vehicle'],
-            "number_deaths": int(row['number_deaths']),
-        })
-    
-    return {"status": "Processed", "details": deaths_by_vehicle.to_dict(orient='records')}
+    try:
+        # Extraindo informações do evento
+        file_key = event['file_key']
+        bucket_name = event['bucket_name']
+        road_name = event['road_name']
+
+        # Baixando o arquivo CSV do S3
+        local_file = f"/tmp/{file_key}"
+        s3.download_file(bucket_name, file_key, local_file)
+
+        # Lendo o CSV com Pandas
+        data = pd.read_csv(local_file)
+
+        # Filtrando e calculando o número de mortos por veículo
+        results = []
+        for vehicle in VEHICLES:
+            filtered_data = data[data['vehicle_type'] == vehicle]
+            deaths = filtered_data['deaths'].sum()
+            results.append({
+                "road_name": road_name,
+                "vehicle": vehicle,
+                "number_deaths": deaths
+            })
+
+        # Salvando os resultados no banco de dados
+        save_to_database(results)
+
+        # Retornando um resumo significativo
+        return {
+            "status": "success",
+            "road_name": road_name,
+            "metrics": results
+        }
+    except Exception as e:
+        print(f"Error: {e}")
+        raise
+
+def save_to_database(results):
+    # Conectando ao banco de dados RDS
+    connection = pymysql.connect(
+        host=DB_HOST,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        database=DB_NAME
+    )
+
+    try:
+        with connection.cursor() as cursor:
+            # Inserindo os resultados na tabela
+            for result in results:
+                sql = """
+                INSERT INTO accident_metrics (created_at, road_name, vehicle, number_deaths)
+                VALUES (NOW(), %s, %s, %s)
+                """
+                cursor.execute(sql, (result['road_name'], result['vehicle'], result['number_deaths']))
+            connection.commit()
+    finally:
+        connection.close()
