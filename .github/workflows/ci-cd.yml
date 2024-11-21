@@ -31,10 +31,10 @@ jobs:
           pip install -r requirements.txt 
 
       - name: Install Serverless Framework version 3
-        run: npm install serverless@3
+        run: npm install serverless@3 
 
-      - name: Install serverless-offline plugin
-        run: npm install serverless-offline
+      - name: Install compatible serverless-offline version
+        run: npm install serverless-offline@8.x  # Use a version that supports Serverless v3
 
   deploy:
     runs-on: ubuntu-latest
