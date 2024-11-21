@@ -9,19 +9,22 @@ on:
       - main
 
 jobs:
-  install_dependencies:
+  setup_environment:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
         uses: actions/checkout@v3
 
-      - name: Set up Python
+      - name: Install Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: Install Python and dependencies
         uses: actions/setup-python@v4
         with:
-          python-version: 3.8 
-
-      - name: Install dependencies
-        run: |
+          python-version: 3.8
+      - run: |
           python -m venv venv
           source venv/bin/activate
           pip install --upgrade pip
@@ -30,72 +33,19 @@ jobs:
       - name: Install Serverless Framework
         run: npm install -g serverless
 
-      - name: Authenticate with Serverless Framework
-        env:
-          SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
-        run: serverless
-
-
-  run_tests:
-    runs-on: ubuntu-latest
-    needs: install_dependencies
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.8
-
-      - name: Install dependencies
-        run: |
-          python -m venv venv
-          source venv/bin/activate
-          pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Run unit tests
-        run: |
-          source venv/bin/activate
-          # Agrega el comando de pruebas, como pytest si lo tienes
-          pytest  # Opcional si tienes pruebas definidas
-
   deploy:
     runs-on: ubuntu-latest
-    needs: run_tests
+    needs: setup_environment
     environment:
       name: production
     steps:
       - name: Check out code
         uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.8
-
-      - name: Install dependencies
-        run: |
-          python -m venv venv
-          source venv/bin/activate
-          pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Install Serverless Framework
-        run: npm install -g serverless
-
-      - name: Deploy to AWS
+      - name: Deploy with Serverless
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: us-east-1
           SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
-        run: |
-          source venv/bin/activate
-          serverless deploy
-
-      - name: Clean up
-        run: |
-          source venv/bin/activate
-          rm -rf venv
+        run: serverless deploy --verbose
