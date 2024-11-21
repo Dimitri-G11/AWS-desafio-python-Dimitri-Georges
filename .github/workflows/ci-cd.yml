@@ -1,41 +1,54 @@
-name: Deploy to AWS
+name: CI/CD Pipeline for Serverless Framework
 
 on:
   push:
     branches:
-      - main  
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
+  setup_environment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Install Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: Install Python and dependencies
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.8
+      - run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt 
+
+      - name: Install Serverless Framework version 3
+        run: npm install serverless@3
+
+      - name: Install serverless-offline plugin
+        run: npm install serverless-offline
+
   deploy:
     runs-on: ubuntu-latest
-
+    needs: setup_environment
+    environment:
+      name: production
     steps:
-      # Check out the code
-      - name: Checar código
-        uses: actions/checkout@v2
+      - name: Check out code
+        uses: actions/checkout@v3
 
-      # Set up AWS credentials
-      - name: Configurar AWS CLI
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1 
-
-      # Install Node.js and dependencies
-      - name: Install Node.js and dependencies
-        run: |
-          # Install Node.js (Make sure to match the version you need)
-          curl -sL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-          sudo apt-get install -y nodejs
-          
-          # Install Serverless Framework and serverless-offline plugin
-          npm install -g serverless
-          npm install serverless-offline --save-dev
-          npm install  # This installs other dependencies in package.json
-
-      # Deploy with Serverless
       - name: Deploy with Serverless
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: us-east-1
         run: |
-          # Deploy your service using Serverless Framework
-          npx serverless deploy --verbose
+          npx serverless@3 deploy --verbose
