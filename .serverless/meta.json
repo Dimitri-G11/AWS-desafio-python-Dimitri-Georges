@@ -1,0 +1,179 @@
+{
+  "C:\\Users\\Usuario\\OneDrive\\Desktop\\AWS Python Dimitri Georges": {
+    "versionSfCore": null,
+    "versionFramework": "4.4.11",
+    "isWithinCompose": false,
+    "isCompose": false,
+    "composeOrgName": null,
+    "composeServiceName": null,
+    "servicePath": "C:\\Users\\Usuario\\OneDrive\\Desktop\\AWS Python Dimitri Georges",
+    "serviceConfigFileName": "serverless.yml",
+    "service": {
+      "service": "acidentes-service",
+      "frameworkVersion": "3",
+      "provider": {
+        "name": "aws",
+        "runtime": "python3.8",
+        "region": "us-east-1",
+        "stage": "dev",
+        "environment": {
+          "DB_HOST": "${ssm:/acidentes/db_host}",
+          "DB_USER": "${ssm:/acidentes/db_user}",
+          "DB_PASSWORD": "<REDACTED>",
+          "DB_NAME": "${ssm:/acidentes/db_name}",
+          "S3_BUCKET_NAME": "${ssm:/acidentes/s3_bucket_name}"
+        }
+      },
+      "functions": {
+        "lambda1": {
+          "handler": "lambdas/lambda1/handler.handler",
+          "events": [
+            {
+              "http": {
+                "path": "lambda1",
+                "method": "post"
+              }
+            }
+          ],
+          "environment": {
+            "S3_BUCKET_NAME": "${self:provider.environment.S3_BUCKET_NAME}"
+          },
+          "iamRoleStatements": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "s3:PutObject"
+              ],
+              "Resource": "arn:aws:s3:::${self:provider.environment.S3_BUCKET_NAME}/*"
+            }
+          ]
+        },
+        "lambda2": {
+          "handler": "lambdas/lambda2/handler.handler",
+          "events": [
+            {
+              "http": {
+                "path": "lambda2",
+                "method": "post"
+              }
+            }
+          ],
+          "environment": {
+            "DB_HOST": "${self:provider.environment.DB_HOST}",
+            "DB_USER": "${self:provider.environment.DB_USER}",
+            "DB_PASSWORD": "<REDACTED>",
+            "DB_NAME": "${self:provider.environment.DB_NAME}"
+          },
+          "iamRoleStatements": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "s3:GetObject"
+              ],
+              "Resource": "arn:aws:s3:::${self:provider.environment.S3_BUCKET_NAME}/*"
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "rds:DescribeDBInstances",
+                "rds:ExecuteStatement"
+              ],
+              "Resource": "arn:aws:rds:us-east-1:${aws:accountId}:db:your-db-instance-id"
+            }
+          ]
+        },
+        "stepFunction": {
+          "handler": "lambdas/stepFunction/handler.start",
+          "events": [
+            {
+              "http": {
+                "path": "startStepFunction",
+                "method": "post"
+              }
+            }
+          ]
+        }
+      },
+      "resources": {
+        "Resources": {
+          "S3Bucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+              "BucketName": "${self:provider.environment.S3_BUCKET_NAME}"
+            }
+          },
+          "MyStepFunction": {
+            "Type": "AWS::StepFunctions::StateMachine",
+            "Properties": {
+              "StateMachineName": "AccidenteFlow",
+              "DefinitionString": {
+                "Fn::Sub": "{\n  \"StartAt\": \"Lambda1Task\",\n  \"States\": {\n    \"Lambda1Task\": {\n      \"Type\": \"Task\",\n      \"Resource\": \"${lambda:lambda1}\",\n      \"Next\": \"Lambda2Task\"\n    },\n    \"Lambda2Task\": {\n      \"Type\": \"Task\",\n      \"Resource\": \"${lambda:lambda2}\",\n      \"End\": true\n    }\n  }\n}\n"
+              }
+            }
+          }
+        }
+      },
+      "plugins": [
+        "serverless-offline",
+        "serverless-step-functions"
+      ],
+      "custom": {
+        "stepFunctions": {
+          "stateMachines": {
+            "accidenteStateMachine": {
+              "definition": {
+                "StartAt": "Lambda1Task",
+                "States": {
+                  "Lambda1Task": {
+                    "Type": "Task",
+                    "Resource": "arn:aws:lambda:us-east-1:${aws:accountId}:function:acidentes-service-dev-lambda1",
+                    "Next": "Lambda2Task"
+                  },
+                  "Lambda2Task": {
+                    "Type": "Task",
+                    "Resource": "arn:aws:lambda:us-east-1:${aws:accountId}:function:acidentes-service-dev-lambda2",
+                    "End": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "serviceRawFile": "service: acidentes-service\r\n\r\nframeworkVersion: '3'\r\n\r\nprovider:\r\n  name: aws\r\n  runtime: python3.8\r\n  region: us-east-1\r\n  stage: dev\r\n  environment:\r\n    DB_HOST: ${ssm:/acidentes/db_host}\r\n    DB_USER: ${ssm:/acidentes/db_user}\r\n    DB_PASSWORD: ${ssm:/acidentes/db_password}\r\n    DB_NAME: ${ssm:/acidentes/db_name}\r\n    S3_BUCKET_NAME: ${ssm:/acidentes/s3_bucket_name}\r\n\r\nfunctions:\r\n  lambda1:\r\n    handler: lambdas/lambda1/handler.handler\r\n    events:\r\n      - http:\r\n          path: lambda1\r\n          method: post\r\n    environment:\r\n      S3_BUCKET_NAME: ${self:provider.environment.S3_BUCKET_NAME}\r\n    iamRoleStatements:\r\n      - Effect: \"Allow\"\r\n        Action:\r\n          - \"s3:PutObject\"\r\n        Resource: arn:aws:s3:::${self:provider.environment.S3_BUCKET_NAME}/*\r\n  \r\n  lambda2:\r\n    handler: lambdas/lambda2/handler.handler\r\n    events:\r\n      - http:\r\n          path: lambda2\r\n          method: post\r\n    environment:\r\n      DB_HOST: ${self:provider.environment.DB_HOST}\r\n      DB_USER: ${self:provider.environment.DB_USER}\r\n      DB_PASSWORD: ${self:provider.environment.DB_PASSWORD}\r\n      DB_NAME: ${self:provider.environment.DB_NAME}\r\n    iamRoleStatements:\r\n      - Effect: \"Allow\"\r\n        Action:\r\n          - \"s3:GetObject\"\r\n        Resource: arn:aws:s3:::${self:provider.environment.S3_BUCKET_NAME}/*\r\n      - Effect: \"Allow\"\r\n        Action:\r\n          - \"rds:DescribeDBInstances\"\r\n          - \"rds:ExecuteStatement\"\r\n        Resource: arn:aws:rds:us-east-1:${aws:accountId}:db:your-db-instance-id\r\n  \r\n  stepFunction:\r\n    handler: lambdas/stepFunction/handler.start\r\n    events:\r\n      - http:\r\n          path: startStepFunction\r\n          method: post\r\n\r\nresources:\r\n  Resources:\r\n    S3Bucket:\r\n      Type: AWS::S3::Bucket\r\n      Properties:\r\n        BucketName: ${self:provider.environment.S3_BUCKET_NAME}\r\n\r\n    MyStepFunction:\r\n      Type: AWS::StepFunctions::StateMachine\r\n      Properties:\r\n        StateMachineName: AccidenteFlow\r\n        DefinitionString:\r\n          Fn::Sub: |\r\n            {\r\n              \"StartAt\": \"Lambda1Task\",\r\n              \"States\": {\r\n                \"Lambda1Task\": {\r\n                  \"Type\": \"Task\",\r\n                  \"Resource\": \"${lambda:lambda1}\",\r\n                  \"Next\": \"Lambda2Task\"\r\n                },\r\n                \"Lambda2Task\": {\r\n                  \"Type\": \"Task\",\r\n                  \"Resource\": \"${lambda:lambda2}\",\r\n                  \"End\": true\r\n                }\r\n              }\r\n            }\r\n\r\nplugins:\r\n  - serverless-offline\r\n  - serverless-step-functions\r\n\r\ncustom:\r\n  stepFunctions:\r\n    stateMachines:\r\n      accidenteStateMachine:\r\n        definition:\r\n          StartAt: \"Lambda1Task\"\r\n          States:\r\n            Lambda1Task:\r\n              Type: Task\r\n              Resource: arn:aws:lambda:${self:provider.region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-lambda1\r\n              Next: Lambda2Task\r\n            Lambda2Task:\r\n              Type: Task\r\n              Resource: arn:aws:lambda:${self:provider.region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-lambda2\r\n              End: true\r\n\r\n",
+    "command": [
+      "deploy"
+    ],
+    "options": {},
+    "error": {
+      "message": "Failed to resolve variable '/acidentes/db_password' with resolver 'ssm' and provider 'default-aws-credential-resolver': AccessDeniedException: User: arn:aws:iam::539247464488:user/DimitriGeorgesL is not authorized to perform: ssm:GetParameter on resource: arn:aws:ssm:us-east-1:539247464488:parameter/acidentes/db_password because no identity-based policy allows the ssm:GetParameter action",
+      "stack": "Error: Failed to resolve variable '/acidentes/db_password' with resolver 'ssm' and provider 'default-aws-credential-resolver': AccessDeniedException: User: arn:aws:iam::539247464488:user/DimitriGeorgesL is not authorized to perform: ssm:GetParameter on resource: arn:aws:ssm:us-east-1:539247464488:parameter/acidentes/db_password because no identity-based policy allows the ssm:GetParameter action\n    at #resolveKey (file:///C:/Users/Usuario/.serverless/releases/4.4.11/package/dist/sf-core.js:693:51323)\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\n    at async _ResolverManager.resolve (file:///C:/Users/Usuario/.serverless/releases/4.4.11/package/dist/sf-core.js:693:57186)\n    at async #handlePlaceholderNode (file:///C:/Users/Usuario/.serverless/releases/4.4.11/package/dist/sf-core.js:693:55952)\n    at async file:///C:/Users/Usuario/.serverless/releases/4.4.11/package/dist/sf-core.js:693:53944\n    at async processNodeAndHandleCompletion (file:///C:/Users/Usuario/.serverless/releases/4.4.11/package/dist/sf-core.js:693:43973)",
+      "code": "RESOLVER_RESOLVE_VARIABLE_ERROR"
+    },
+    "machineId": "caec89f4203fa38f33f8098202207cbc",
+    "stage": "dev",
+    "accessKeyV2": "<REDACTED>",
+    "accessKeyV1": "<REDACTED>",
+    "orgId": "08aa919d-618e-472b-8e81-7f2344e79b3b",
+    "orgName": "dimitrig",
+    "userId": "vTT6pHV68wGnyLnKhS",
+    "dashboard": {
+      "isEnabledForService": false,
+      "requiredAuthentication": false,
+      "orgFeaturesInUse": null,
+      "orgObservabilityIntegrations": null,
+      "serviceAppId": null,
+      "serviceProvider": null,
+      "instanceParameters": null
+    },
+    "userName": "dimitrig",
+    "subscription": null,
+    "userEmail": "dimitrigeorges11@gmail.com",
+    "serviceProviderAwsCfStackId": null,
+    "serviceProviderAwsCfStackCreated": null,
+    "serviceProviderAwsCfStackUpdated": null,
+    "serviceProviderAwsCfStackStatus": null,
+    "serviceProviderAwsCfStackOutputs": null
+  }
+}

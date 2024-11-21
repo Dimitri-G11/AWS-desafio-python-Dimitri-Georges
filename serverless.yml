@@ -6,6 +6,7 @@ provider:
   name: aws
   runtime: python3.8
   region: us-east-1
+  stage: dev
   environment:
     DB_HOST: ${ssm:/acidentes/db_host}
     DB_USER: ${ssm:/acidentes/db_user}
