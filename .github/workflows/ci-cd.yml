@@ -30,8 +30,11 @@ jobs:
       - name: Install Serverless Framework
         run: npm install -g serverless
 
-      - name: Set up Serverless Framework
-        run: serverless config credentials --key ${{ secrets.SERVERLESS_ACCESS_KEY }} --provider aws
+      - name: Authenticate with Serverless Framework
+        env:
+          SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
+        run: serverless
+
 
   run_tests:
     runs-on: ubuntu-latest
