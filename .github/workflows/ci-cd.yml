@@ -18,12 +18,23 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: 16
 
-      - name: Install dependencies
-        run: |
-          npm install
-          npm install serverless-offline@8.x --save-dev
+      - name: Install Python and dependencies
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.8
+      - run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt 
+
+      - name: Install Serverless Framework version 3
+        run: npm install serverless@3 
+
+      - name: Install serverless-offline plugin
+        run: npm install serverless-offline@8.x --save-dev  # Compatible with Serverless v3
 
   deploy:
     runs-on: ubuntu-latest
@@ -40,4 +51,4 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: us-east-1
         run: |
-          npx serverless deploy --verbose
+          npx serverless@3 deploy --verbose
