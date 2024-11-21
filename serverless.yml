@@ -49,7 +49,7 @@ functions:
         Action:
           - "rds:DescribeDBInstances"
           - "rds:ExecuteStatement"
-        Resource: arn:aws:rds:us-east-1:${aws:accountId}:db:your-db-instance-id
+        Resource: arn:aws:rds:us-east-1:${aws:accountId}:db:your-db-instance-id  # Replace with actual DB instance ID
   
   stepFunction:
     handler: lambdas/stepFunction/handler.start
