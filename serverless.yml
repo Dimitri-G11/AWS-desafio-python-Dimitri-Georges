@@ -28,7 +28,7 @@ functions:
         Action:
           - "s3:PutObject"
         Resource: arn:aws:s3:::${self:provider.environment.S3_BUCKET_NAME}/*
-  
+
   lambda2:
     handler: lambdas/lambda2/handler.handler
     events:
@@ -50,7 +50,7 @@ functions:
           - "rds:DescribeDBInstances"
           - "rds:ExecuteStatement"
         Resource: arn:aws:rds:us-east-1:${aws:accountId}:db:your-db-instance-id
-  
+
   stepFunction:
     handler: lambdas/stepFunction/handler.start
     events:
@@ -106,4 +106,3 @@ custom:
               Type: Task
               Resource: arn:aws:lambda:${self:provider.region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-lambda2
               End: true
-
