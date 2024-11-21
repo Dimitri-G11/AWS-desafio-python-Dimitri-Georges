@@ -1,109 +1,30 @@
-service: acidentes-service
+name: Deploy to AWS
 
-frameworkVersion: '3'
+on:
+  push:
+    branches:
+      - main  
 
-provider:
-  name: aws
-  runtime: python3.8
-  region: us-east-1
-  stage: dev
-  environment:
-    DB_HOST: ${ssm:/acidentes/db_host}
-    DB_USER: ${ssm:/acidentes/db_user}
-    DB_PASSWORD: ${ssm:/acidentes/db_password}
-    DB_NAME: ${ssm:/acidentes/db_name}
-    S3_BUCKET_NAME: ${ssm:/acidentes/s3_bucket_name}
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
 
-functions:
-  lambda1:
-    handler: lambdas/lambda1/handler.handler
-    events:
-      - http:
-          path: lambda1
-          method: post
-    environment:
-      S3_BUCKET_NAME: ${self:provider.environment.S3_BUCKET_NAME}
-    iamRoleStatements:
-      - Effect: "Allow"
-        Action:
-          - "s3:PutObject"
-        Resource: arn:aws:s3:::${self:provider.environment.S3_BUCKET_NAME}/*
-  
-  lambda2:
-    handler: lambdas/lambda2/handler.handler
-    events:
-      - http:
-          path: lambda2
-          method: post
-    environment:
-      DB_HOST: ${self:provider.environment.DB_HOST}
-      DB_USER: ${self:provider.environment.DB_USER}
-      DB_PASSWORD: ${self:provider.environment.DB_PASSWORD}
-      DB_NAME: ${self:provider.environment.DB_NAME}
-    iamRoleStatements:
-      - Effect: "Allow"
-        Action:
-          - "s3:GetObject"
-        Resource: arn:aws:s3:::${self:provider.environment.S3_BUCKET_NAME}/*
-      - Effect: "Allow"
-        Action:
-          - "rds:DescribeDBInstances"
-          - "rds:ExecuteStatement"
-        Resource: arn:aws:rds:us-east-1:${aws:accountId}:db:your-db-instance-id
-  
-  stepFunction:
-    handler: lambdas/stepFunction/handler.start
-    events:
-      - http:
-          path: startStepFunction
-          method: post
+    steps:
+      - name: Checar código
+        uses: actions/checkout@v2
 
-resources:
-  Resources:
-    S3Bucket:
-      Type: AWS::S3::Bucket
-      Properties:
-        BucketName: ${self:provider.environment.S3_BUCKET_NAME}
+      - name: Configurar AWS CLI
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1 
+      - name: Instalar dependências
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
 
-    MyStepFunction:
-      Type: AWS::StepFunctions::StateMachine
-      Properties:
-        StateMachineName: AccidenteFlow
-        DefinitionString:
-          Fn::Sub: |
-            {
-              "StartAt": "Lambda1Task",
-              "States": {
-                "Lambda1Task": {
-                  "Type": "Task",
-                  "Resource": "${lambda:lambda1}",
-                  "Next": "Lambda2Task"
-                },
-                "Lambda2Task": {
-                  "Type": "Task",
-                  "Resource": "${lambda:lambda2}",
-                  "End": true
-                }
-              }
-            }
-
-plugins:
-  - serverless-offline
-  - serverless-step-functions
-
-custom:
-  stepFunctions:
-    stateMachines:
-      accidenteStateMachine:
-        definition:
-          StartAt: "Lambda1Task"
-          States:
-            Lambda1Task:
-              Type: Task
-              Resource: arn:aws:lambda:${self:provider.region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-lambda1
-              Next: Lambda2Task
-            Lambda2Task:
-              Type: Task
-              Resource: arn:aws:lambda:${self:provider.region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-lambda2
-              End: true
-
+      - name: Deploy com Serverless
+        run: |
+          npx serverless deploy

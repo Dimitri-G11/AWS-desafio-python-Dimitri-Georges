@@ -25,7 +25,7 @@ jobs:
           python -m venv venv
           source venv/bin/activate
           pip install --upgrade pip
-          pip install -r requirements.txt  # Asegúrate de tener un archivo requirements.txt
+          pip install -r requirements.txt 
 
       - name: Install Serverless Framework
         run: npm install -g serverless
@@ -61,7 +61,7 @@ jobs:
     needs: run_tests
     environment:
       name: production
-      url: https://your-api-url.com  # Si deseas agregar un enlace a tu API
+      
 
     steps:
       - name: Check out code
