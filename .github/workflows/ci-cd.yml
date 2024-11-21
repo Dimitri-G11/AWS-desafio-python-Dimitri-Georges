@@ -39,7 +39,7 @@ jobs:
 
       - name: Install Serverless Framework and Plugins
         run: |
-          npm install serverless@3  # Install Serverless Framework version 3
+          npm install -g serverless  # Install Serverless Framework globally
           npm install serverless-offline@8.x --save-dev  # Install serverless-offline plugin for Serverless v3
           npm install serverless-step-functions --save-dev  # If you're using Step Functions, install this plugin
 
@@ -51,6 +51,9 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v3
+
+      - name: Check serverless installation
+        run: serverless --version  # Confirm Serverless is installed and available
 
       - name: Deploy with Serverless
         env:
