@@ -1,4 +1,4 @@
-service: acidentes-service
+service: accidentes-service
 
 frameworkVersion: '3'
 
@@ -28,7 +28,7 @@ functions:
         Action:
           - "s3:PutObject"
         Resource: arn:aws:s3:::${self:provider.environment.S3_BUCKET_NAME}/*
-
+  
   lambda2:
     handler: lambdas/lambda2/handler.handler
     events:
@@ -50,7 +50,7 @@ functions:
           - "rds:DescribeDBInstances"
           - "rds:ExecuteStatement"
         Resource: arn:aws:rds:us-east-1:${aws:accountId}:db:your-db-instance-id
-
+  
   stepFunction:
     handler: lambdas/stepFunction/handler.start
     events:
