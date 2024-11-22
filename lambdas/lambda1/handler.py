@@ -1,12 +1,23 @@
 import boto3
 import requests
 import yaml
-import os
 import pandas as pd
 
-# Inicializar cliente de S3
+# Inicializar clientes de S3 y SSM
 s3 = boto3.client('s3')
-BUCKET_NAME = os.environ['S3_BUCKET']
+ssm = boto3.client('ssm')
+
+# Función para obtener un parámetro de SSM
+def get_ssm_parameter(name):
+    try:
+        response = ssm.get_parameter(Name=name, WithDecryption=True)  # WithDecryption es para parámetros SecureString
+        return response['Parameter']['Value']
+    except Exception as e:
+        print(f"Error al obtener parámetro de SSM: {e}")
+        raise
+
+# Recuperar las variables de entorno desde SSM
+S3_BUCKET_NAME = get_ssm_parameter('/s3_bucket_name')
 
 def handler(event, context):
     try:
@@ -38,12 +49,12 @@ def handler(event, context):
 
         # Subir archivo procesado al bucket S3
         file_key = f"{road_name}_processed.csv"
-        s3.upload_file(local_file, BUCKET_NAME, file_key)
+        s3.upload_file(local_file, S3_BUCKET_NAME, file_key)
 
         # Retornar información para Lambda 2
         return {
             "file_key": file_key,
-            "bucket_name": BUCKET_NAME,
+            "bucket_name": S3_BUCKET_NAME,
             "road_name": road_name,
             "record_count": len(processed_data)  # Número de registros procesados
         }
