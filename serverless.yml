@@ -74,12 +74,12 @@ resources:
               "States": {
                 "Lambda1Task": {
                   "Type": "Task",
-                  "Resource": "${lambda:lambda1}",
+                  "Resource": {"Fn::GetAtt": ["Lambda1LambdaFunction", "Arn"]},
                   "Next": "Lambda2Task"
                 },
                 "Lambda2Task": {
                   "Type": "Task",
-                  "Resource": "${lambda:lambda2}",
+                  "Resource": {"Fn::GetAtt": ["Lambda2LambdaFunction", "Arn"]},
                   "End": true
                 }
               }
