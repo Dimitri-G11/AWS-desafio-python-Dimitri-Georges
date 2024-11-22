@@ -9,7 +9,7 @@ provider:
   stage: dev
   environment:
     DB_HOST: ${ssm:/db_host}
-    DB_USER: ${ssm:db_user}
+    DB_USER: ${ssm:/db_user}
     DB_PASSWORD: ${ssm:/db_password}
     DB_NAME: ${ssm:/db_name}
     S3_BUCKET_NAME: ${ssm:/s3_bucket_name}
@@ -28,7 +28,7 @@ functions:
         Action:
           - "s3:PutObject"
         Resource: arn:aws:s3:::${self:provider.environment.S3_BUCKET_NAME}/*
-  
+
   lambda2:
     handler: lambdas/lambda2/handler.handler
     events:
@@ -49,8 +49,8 @@ functions:
         Action:
           - "rds:DescribeDBInstances"
           - "rds:ExecuteStatement"
-        Resource: arn:aws:rds:us-east-1:${aws:accountId}:db:your-db-instance-id  # Replace with actual DB instance ID
-  
+        Resource: arn:aws:rds:us-east-1:${aws:accountId}:db:your-db-instance-id  # Reemplazar con el ID de tu instancia DB
+
   stepFunction:
     handler: lambdas/stepFunction/handler.start
     events:
