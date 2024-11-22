@@ -27,7 +27,7 @@ functions:
       - Effect: "Allow"
         Action:
           - "s3:PutObject"
-        Resource: arn:aws:s3:::${self:provider.environment.S3_BUCKET_NAME}/*
+        Resource: arn:aws:s3:::${self:provider.environment.S3_BUCKET_NAME}/processed/*
 
   lambda2:
     handler: lambdas/lambda2/handler.handler
@@ -44,19 +44,32 @@ functions:
       - Effect: "Allow"
         Action:
           - "s3:GetObject"
-        Resource: arn:aws:s3:::${self:provider.environment.S3_BUCKET_NAME}/*
+        Resource: arn:aws:s3:::${self:provider.environment.S3_BUCKET_NAME}/processed/*
       - Effect: "Allow"
         Action:
-          - "rds:DescribeDBInstances"
           - "rds:ExecuteStatement"
-        Resource: arn:aws:rds:us-east-1:${aws:accountId}:db:your-db-instance-id  # Reemplazar con el ID de tu instancia DB
+        Resource: arn:aws:rds:us-east-1:${aws:accountId}:db:your-db-instance-id
 
-  stepFunction:
-    handler: lambdas/stepFunction/handler.start
-    events:
-      - http:
-          path: startStepFunction
-          method: post
+stepFunctions:
+  stateMachines:
+    accidenteStateMachine:
+      definition:
+        StartAt: "Lambda1Task"
+        States:
+          Lambda1Task:
+            Type: Task
+            Resource:
+              Fn::GetAtt:
+                - lambda1
+                - Arn
+            Next: Lambda2Task
+          Lambda2Task:
+            Type: Task
+            Resource:
+              Fn::GetAtt:
+                - lambda2
+                - Arn
+            End: true
 
 resources:
   Resources:
@@ -64,45 +77,7 @@ resources:
       Type: AWS::S3::Bucket
       Properties:
         BucketName: ${self:provider.environment.S3_BUCKET_NAME}
-
-    MyStepFunction:
-      Type: AWS::StepFunctions::StateMachine
-      Properties:
-        StateMachineName: AccidenteFlow
-        DefinitionString:
-          Fn::Sub: |
-            {
-              "StartAt": "Lambda1Task",
-              "States": {
-                "Lambda1Task": {
-                  "Type": "Task",
-                  "Resource": "${lambda:lambda1}",
-                  "Next": "Lambda2Task"
-                },
-                "Lambda2Task": {
-                  "Type": "Task",
-                  "Resource": "${lambda:lambda2}",
-                  "End": true
-                }
-              }
-            }
-
-plugins:
-  - serverless-offline
-  - serverless-step-functions
-
-custom:
-  stepFunctions:
-    stateMachines:
-      accidenteStateMachine:
-        definition:
-          StartAt: "Lambda1Task"
-          States:
-            Lambda1Task:
-              Type: Task
-              Resource: arn:aws:lambda:${self:provider.region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-lambda1
-              Next: Lambda2Task
-            Lambda2Task:
-              Type: Task
-              Resource: arn:aws:lambda:${self:provider.region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-lambda2
-              End: true
+        LifecycleConfiguration:
+          Rules:
+            - Status: Enabled
+              ExpirationInDays: 7  # Borra archivos después de 7 días para evitar acumulación
