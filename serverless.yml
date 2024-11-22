@@ -13,7 +13,7 @@ provider:
     DB_PASSWORD: ${ssm:/db_password}
     DB_NAME: ${ssm:/db_name}
     S3_BUCKET_NAME: ${ssm:/s3_bucket_name}
-
+  
 functions:
   lambda1:
     handler: lambdas/lambda1/handler.handler
