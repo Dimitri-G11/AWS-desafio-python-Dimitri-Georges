@@ -13,19 +13,6 @@ provider:
     DB_PASSWORD: ${ssm:/db_password}
     DB_NAME: ${ssm:/db_name}
     S3_BUCKET_NAME: ${ssm:/s3_bucket_name}
-  iam:
-    role:
-      statements:
-        - Effect: "Allow"
-          Action:
-            - "s3:PutObject"
-            - "s3:GetObject"
-          Resource: "arn:aws:s3:::${ssm:/s3_bucket_name}/*"
-        - Effect: "Allow"
-          Action:
-            - "rds:DescribeDBInstances"
-            - "rds:ExecuteStatement"
-          Resource: "*"
 
 functions:
   lambda1:
@@ -35,7 +22,12 @@ functions:
           path: lambda1
           method: post
     environment:
-      S3_BUCKET_NAME: ${ssm:/s3_bucket_name}
+      S3_BUCKET_NAME: ${self:provider.environment.S3_BUCKET_NAME}
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - "s3:PutObject"
+        Resource: arn:aws:s3:::${self:provider.environment.S3_BUCKET_NAME}/*
 
   lambda2:
     handler: lambdas/lambda2/handler.handler
@@ -44,10 +36,20 @@ functions:
           path: lambda2
           method: post
     environment:
-      DB_HOST: ${ssm:/db_host}
-      DB_USER: ${ssm:/db_user}
-      DB_PASSWORD: ${ssm:/db_password}
-      DB_NAME: ${ssm:/db_name}
+      DB_HOST: ${self:provider.environment.DB_HOST}
+      DB_USER: ${self:provider.environment.DB_USER}
+      DB_PASSWORD: ${self:provider.environment.DB_PASSWORD}
+      DB_NAME: ${self:provider.environment.DB_NAME}
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - "s3:GetObject"
+        Resource: arn:aws:s3:::${self:provider.environment.S3_BUCKET_NAME}/*
+      - Effect: "Allow"
+        Action:
+          - "rds:DescribeDBInstances"
+          - "rds:ExecuteStatement"
+        Resource: arn:aws:rds:us-east-1:${aws:accountId}:db:your-db-instance-id  # Reemplazar con el ID de tu instancia DB
 
   stepFunction:
     handler: lambdas/stepFunction/handler.start
@@ -61,7 +63,7 @@ resources:
     S3Bucket:
       Type: AWS::S3::Bucket
       Properties:
-        BucketName: ${ssm:/s3_bucket_name}
+        BucketName: ${self:provider.environment.S3_BUCKET_NAME}
 
     MyStepFunction:
       Type: AWS::StepFunctions::StateMachine
@@ -74,23 +76,27 @@ resources:
               "States": {
                 "Lambda1Task": {
                   "Type": "Task",
-                  "Resource": {"Fn::GetAtt": ["Lambda1LambdaFunction", "Arn"]},
+                  "Resource": "${self:service}-${self:provider.stage}-lambda1",
                   "Next": "Lambda2Task"
                 },
                 "Lambda2Task": {
                   "Type": "Task",
-                  "Resource": {"Fn::GetAtt": ["Lambda2LambdaFunction", "Arn"]},
+                  "Resource": "${self:service}-${self:provider.stage}-lambda2",
                   "End": true
                 }
               }
             }
+
+plugins:
+  - serverless-offline
+  - serverless-step-functions
 
 custom:
   stepFunctions:
     stateMachines:
       accidenteStateMachine:
         definition:
-          StartAt: Lambda1Task
+          StartAt: "Lambda1Task"
           States:
             Lambda1Task:
               Type: Task
@@ -100,7 +106,3 @@ custom:
               Type: Task
               Resource: arn:aws:lambda:${self:provider.region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-lambda2
               End: true
-
-plugins:
-  - serverless-offline
-  - serverless-step-functions
