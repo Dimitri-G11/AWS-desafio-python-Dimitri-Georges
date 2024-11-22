@@ -26,7 +26,9 @@ provider:
         - "iam:PassRole"
         - "lambda:*"
         - "states:*"
-      Resource: "*"
+      Resource: 
+        - "arn:aws:s3:::${self:provider.environment.S3_BUCKET_NAME}"  # Acceso al bucket
+        - "arn:aws:s3:::${self:provider.environment.S3_BUCKET_NAME}/*"  # Acceso a los objetos dentro del bucket
 
 functions:
   lambda1:
@@ -59,11 +61,13 @@ functions:
 
 resources:
   Resources:
+    # Crear un bucket S3 en la región especificada
     S3Bucket:
       Type: AWS::S3::Bucket
       Properties:
-        BucketName: ${self:provider.environment.S3_BUCKET_NAME}
+        BucketName: ${self:provider.environment.S3_BUCKET_NAME}  # Nombre del bucket, que se configura en SSM
 
+    # Crear la definición de Step Function
     MyStepFunction:
       Type: AWS::StepFunctions::StateMachine
       Properties:
