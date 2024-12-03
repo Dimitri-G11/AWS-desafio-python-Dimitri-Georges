@@ -6,43 +6,30 @@ provider:
   region: us-east-1
   environment:
     S3_BUCKET: "dimitris3"
-    DB_SECRET_ID: db-secrets   
-    DB_PORT: 5432    
+    DB_SECRET_ID: "/db-secrets"
+    DB_NAME: "db-name"
+    DB_PORT: 5432
 
 iamRoleStatements:
   - Effect: "Allow"
     Action:
       - "s3:GetObject"
       - "s3:ListBucket"
-    Resource: "arn:aws:s3:::${self:provider.environment.S3_BUCKET}/*"
-    
+      - "s3:PutObject"
+    Resource:
+      - "arn:aws:s3:::${self:provider.environment.S3_BUCKET}"
+      - "arn:aws:s3:::${self:provider.environment.S3_BUCKET}/*"
+
   - Effect: "Allow"
     Action:
       - "ssm:GetParameter"
-      - "ssm:GetParameters"
-      - "ssm:GetParameterHistory"
-    Resource: "arn:aws:ssm:${self:provider.region}:${aws:accountId}:parameter/${self:provider.environment.DB_SECRET_ID}"
-    
-  - Effect: "Allow"
-    Action:
-      - "s3:GetObject"
-      - "s3:ListBucket"
-    Resource: "arn:aws:s3:::${self:provider.environment.S3_BUCKET}/*"
-  
+    Resource: "arn:aws:ssm:${self:provider.region}:*:parameter${self:provider.environment.DB_SECRET_ID}"
+
   - Effect: "Allow"
     Action:
       - "rds:DescribeDBInstances"
       - "rds:DescribeDBClusters"
-    Resource: "*"
-  
-  - Effect: "Allow"
-    Action:
-      - "rds-data:ExecuteStatement"  
-    Resource: "arn:aws:rds:${self:provider.region}:${aws:accountId}:cluster:${self:provider.environment.DB_NAME}"
-  
-  - Effect: "Allow"
-    Action:
-      - "rds:Connect"
+      - "rds-data:ExecuteStatement"
     Resource: "*"
 
 functions:
@@ -67,21 +54,35 @@ resources:
       Type: AWS::S3::Bucket
       Properties:
         BucketName: ${self:provider.environment.S3_BUCKET}
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: true
+          BlockPublicPolicy: true
+          IgnorePublicAcls: true
+          RestrictPublicBuckets: true
 
 stepFunctions:
   stateMachines:
     ProcessCSV:
       definition:
+        Comment: "Step Function to process CSV files"
         StartAt: Lambda1
         States:
           Lambda1:
             Type: Task
-            Resource: arn:aws:lambda:${self:provider.region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-lambda1
+            Resource: !GetAtt Lambda1.Arn
             Parameters:
               link: "https://dados.antt.gov.br/dataset/ef0171a8-f0df-4817-a4ed-b4ff94d87194/resource/aa60ce3a-033a-4864-81dc-ae32bea866e5/download/demostrativo_acidentes_viaaraucaria.csv"
             Next: Lambda2
           Lambda2:
             Type: Task
-            Resource: arn:aws:lambda:${self:provider.region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-lambda2
+            Resource: !GetAtt Lambda2.Arn
             End: true
 
+plugins:
+  - serverless-step-functions
+  - serverless-python-requirements
+
+custom:
+  pythonRequirements:
+    dockerizePip: true
+    layer: true
