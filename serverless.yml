@@ -64,7 +64,7 @@ resources:
       Properties:
         Handler: lambdas/lambda1/handler.handler
         Role: arn:aws:iam::${aws:accountId}:role/role-name
-        FunctionName: ${self:service}-${self:provider.stage}-lambda1
+        FunctionName: !Sub "${self:service}-${self:provider.stage}-lambda1"
         Runtime: python3.9
         Code:
           S3Bucket: ${self:provider.deploymentBucket.name}
@@ -75,7 +75,7 @@ resources:
       Properties:
         Handler: lambdas/lambda2/handler.handler
         Role: arn:aws:iam::${aws:accountId}:role/role-name
-        FunctionName: ${self:service}-${self:provider.stage}-lambda2
+        FunctionName: !Sub "${self:service}-${self:provider.stage}-lambda2"
         Runtime: python3.9
         Code:
           S3Bucket: ${self:provider.deploymentBucket.name}
