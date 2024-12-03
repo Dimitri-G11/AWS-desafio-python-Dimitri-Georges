@@ -10,7 +10,7 @@ jobs:
         with:
           node-version: 16
 
-      - name: Clean previous artifacts
+      - name: Clean previous
         run: |
           rm -rf .serverless
           rm -rf node_modules
