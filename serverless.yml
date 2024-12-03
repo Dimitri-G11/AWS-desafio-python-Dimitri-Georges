@@ -59,28 +59,6 @@ resources:
           IgnorePublicAcls: true
           RestrictPublicBuckets: true
 
-    Lambda1Function:
-      Type: AWS::Lambda::Function
-      Properties:
-        Handler: lambdas/lambda1/handler.handler
-        Role: arn:aws:iam::${aws:accountId}:role/role-name
-        FunctionName: !Sub "${self:service}-${self:provider.stage}-lambda1"
-        Runtime: python3.9
-        Code:
-          S3Bucket: ${self:provider.deploymentBucket.name}
-          S3Key: lambdas/lambda1.zip
-
-    Lambda2Function:
-      Type: AWS::Lambda::Function
-      Properties:
-        Handler: lambdas/lambda2/handler.handler
-        Role: arn:aws:iam::${aws:accountId}:role/role-name
-        FunctionName: !Sub "${self:service}-${self:provider.stage}-lambda2"
-        Runtime: python3.9
-        Code:
-          S3Bucket: ${self:provider.deploymentBucket.name}
-          S3Key: lambdas/lambda2.zip
-
 stepFunctions:
   stateMachines:
     ProcessCSV:
@@ -90,13 +68,13 @@ stepFunctions:
         States:
           Lambda1:
             Type: Task
-            Resource: !GetAtt Lambda1Function.Arn
+            Resource: !GetAtt Lambda1LambdaFunction.Arn
             Parameters:
               csv_url: "https://dados.antt.gov.br/dataset/ef0171a8-f0df-4817-a4ed-b4ff94d87194/resource/aa60ce3a-033a-4864-81dc-ae32bea866e5/download/demostrativo_acidentes_viaaraucaria.csv"
             Next: Lambda2
           Lambda2:
             Type: Task
-            Resource: !GetAtt Lambda2Function.Arn
+            Resource: !GetAtt Lambda2LambdaFunction.Arn
             End: true
 
 plugins:
