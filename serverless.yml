@@ -1,5 +1,3 @@
-service: step-functions-challenge
-
 provider:
   name: aws
   runtime: python3.9
@@ -8,28 +6,27 @@ provider:
     S3_BUCKET: "dimitris3"
     DB_SECRET_ID: /db-secrets
     DB_PORT: 5432
-
-iamRoleStatements:
-  - Effect: "Allow"
-    Action:
-      - "s3:GetObject"
-      - "s3:ListBucket"
-      - "s3:PutObject"
-    Resource:
-      - "arn:aws:s3:::${self:provider.environment.S3_BUCKET}"
-      - "arn:aws:s3:::${self:provider.environment.S3_BUCKET}/*"
-
-  - Effect: "Allow"
-    Action:
-      - "ssm:GetParameter"
-    Resource: "arn:aws:ssm:${self:provider.region}:*:parameter${self:provider.environment.DB_SECRET_ID}"
-
-  - Effect: "Allow"
-    Action:
-      - "rds:DescribeDBInstances"
-      - "rds:DescribeDBClusters"
-      - "rds-data:ExecuteStatement"
-    Resource: "*"
+  iam:
+    role:
+      statements:
+        - Effect: "Allow"
+          Action:
+            - "s3:GetObject"
+            - "s3:ListBucket"
+            - "s3:PutObject"
+          Resource:
+            - "arn:aws:s3:::${self:provider.environment.S3_BUCKET}"
+            - "arn:aws:s3:::${self:provider.environment.S3_BUCKET}/*"
+        - Effect: "Allow"
+          Action:
+            - "ssm:GetParameter"
+          Resource: "arn:aws:ssm:${self:provider.region}:*:parameter${self:provider.environment.DB_SECRET_ID}"
+        - Effect: "Allow"
+          Action:
+            - "rds:DescribeDBInstances"
+            - "rds:DescribeDBClusters"
+            - "rds-data:ExecuteStatement"
+          Resource: "*"
 
 functions:
   lambda1:
@@ -68,13 +65,13 @@ stepFunctions:
         States:
           Lambda1:
             Type: Task
-            Resource: !GetAtt Lambda1.Arn
+            Resource: !GetAtt Lambda1LambdaFunction.Arn
             Parameters:
               link: "https://dados.antt.gov.br/dataset/ef0171a8-f0df-4817-a4ed-b4ff94d87194/resource/aa60ce3a-033a-4864-81dc-ae32bea866e5/download/demostrativo_acidentes_viaaraucaria.csv"
             Next: Lambda2
           Lambda2:
             Type: Task
-            Resource: !GetAtt Lambda2.Arn
+            Resource: !GetAtt Lambda2LambdaFunction.Arn
             End: true
 
 plugins:
