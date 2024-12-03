@@ -1,32 +1,49 @@
-service: accidentes-service
-
-frameworkVersion: '3'
+service: step-functions-challenge
 
 provider:
   name: aws
-  runtime: python3.8
+  runtime: python3.9
   region: us-east-1
-  stage: dev
   environment:
-    DB_HOST: ${ssm:/db_host}
-    DB_USER: ${ssm:/db_user}
-    DB_PASSWORD: ${ssm:/db_password}
-    DB_NAME: ${ssm:/db_name}
-    S3_BUCKET_NAME: ${ssm:/s3_bucket_name}
-  iamRoleStatements:
-    - Effect: "Allow"
-      Action:
-        - "s3:PutObject"
-        - "s3:GetObject"
-        - "s3:CreateBucket"
-        - "s3:DeleteObject"
-        - "s3:ListBucket"
-        - "cloudformation:*"
-        - "logs:*"
-        - "iam:PassRole"
-        - "lambda:*"
-        - "states:*"
-      Resource: "*"
+    S3_BUCKET: "dimitris3"
+    DB_SECRET_ID: db-secrets   
+    DB_PORT: 5432    
+
+iamRoleStatements:
+  - Effect: "Allow"
+    Action:
+      - "s3:GetObject"
+      - "s3:ListBucket"
+    Resource: "arn:aws:s3:::${self:provider.environment.S3_BUCKET}/*"
+    
+  - Effect: "Allow"
+    Action:
+      - "ssm:GetParameter"
+      - "ssm:GetParameters"
+      - "ssm:GetParameterHistory"
+    Resource: "arn:aws:ssm:${self:provider.region}:${aws:accountId}:parameter/${self:provider.environment.DB_SECRET_ID}"
+    
+  - Effect: "Allow"
+    Action:
+      - "s3:GetObject"
+      - "s3:ListBucket"
+    Resource: "arn:aws:s3:::${self:provider.environment.S3_BUCKET}/*"
+  
+  - Effect: "Allow"
+    Action:
+      - "rds:DescribeDBInstances"
+      - "rds:DescribeDBClusters"
+    Resource: "*"
+  
+  - Effect: "Allow"
+    Action:
+      - "rds-data:ExecuteStatement"  
+    Resource: "arn:aws:rds:${self:provider.region}:${aws:accountId}:cluster:${self:provider.environment.DB_NAME}"
+  
+  - Effect: "Allow"
+    Action:
+      - "rds:Connect"
+    Resource: "*"
 
 functions:
   lambda1:
@@ -35,75 +52,36 @@ functions:
       - http:
           path: lambda1
           method: post
-    environment:
-      S3_BUCKET_NAME: ${self:provider.environment.S3_BUCKET_NAME}
 
   lambda2:
     handler: lambdas/lambda2/handler.handler
-    events:
-      - http:
-          path: lambda2
-          method: post
-    environment:
-      DB_HOST: ${self:provider.environment.DB_HOST}
-      DB_USER: ${self:provider.environment.DB_USER}
-      DB_PASSWORD: ${self:provider.environment.DB_PASSWORD}
-      DB_NAME: ${self:provider.environment.DB_NAME}
-
-  stepFunction:
-    handler: lambdas/stepFunction/handler.start
-    events:
-      - http:
-          path: startStepFunction
-          method: post
+    vpc:
+      securityGroupIds:
+        - sg-0250c50609b0a61d5  
+      subnetIds:
+        - subnet-08c5033fba30bb485  
 
 resources:
   Resources:
     S3Bucket:
       Type: AWS::S3::Bucket
       Properties:
-        BucketName: ${self:provider.environment.S3_BUCKET_NAME}
+        BucketName: ${self:provider.environment.S3_BUCKET}
 
-    MyStepFunction:
-      Type: AWS::StepFunctions::StateMachine
-      Properties:
-        StateMachineName: AccidenteFlow
-        DefinitionString:
-          Fn::Sub: |
-            {
-              "StartAt": "Lambda1Task",
-              "States": {
-                "Lambda1Task": {
-                  "Type": "Task",
-                  "Resource": "${self:service}-${self:provider.stage}-lambda1",
-                  "Next": "Lambda2Task"
-                },
-                "Lambda2Task": {
-                  "Type": "Task",
-                  "Resource": "${self:service}-${self:provider.stage}-lambda2",
-                  "End": true
-                }
-              }
-            }
+stepFunctions:
+  stateMachines:
+    ProcessCSV:
+      definition:
+        StartAt: Lambda1
+        States:
+          Lambda1:
+            Type: Task
+            Resource: arn:aws:lambda:${self:provider.region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-lambda1
+            Parameters:
+              link: "https://dados.antt.gov.br/dataset/ef0171a8-f0df-4817-a4ed-b4ff94d87194/resource/aa60ce3a-033a-4864-81dc-ae32bea866e5/download/demostrativo_acidentes_viaaraucaria.csv"
+            Next: Lambda2
+          Lambda2:
+            Type: Task
+            Resource: arn:aws:lambda:${self:provider.region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-lambda2
+            End: true
 
-plugins:
-  - serverless-offline
-  - serverless-step-functions
-
-custom:
-  serverlessDeploymentBucket:
-    name: accidentes-service-dev-serverlessdeploymentbucket  # Nombre de tu bucket
-  stepFunctions:
-    stateMachines:
-      accidenteStateMachine:
-        definition:
-          StartAt: "Lambda1Task"
-          States:
-            Lambda1Task:
-              Type: Task
-              Resource: arn:aws:lambda:${self:provider.region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-lambda1
-              Next: Lambda2Task
-            Lambda2Task:
-              Type: Task
-              Resource: arn:aws:lambda:${self:provider.region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-lambda2
-              End: true

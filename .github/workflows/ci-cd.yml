@@ -15,41 +15,19 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v3
 
-      - name: Ensure package.json exists
-        run: |
-          ls -l # List files to confirm package.json exists
-
       - name: Install Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 16  # Use Node.js version 16 (LTS) for better stability
+          node-version: 16  
 
+      - name: Install Serverless Framework
+        run: npm install -g serverless@3
+  
       - name: Install dependencies
-        run: npm install  # Ensure all dependencies from package.json are installed
+        run: npm install
 
-      - name: Install Python and dependencies
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.8
-      - run: |
-          python -m venv venv
-          source venv/bin/activate
-          pip install --upgrade pip
-          pip install -r requirements.txt 
-
-      - name: Install Serverless Framework and Plugins
-        run: |
-          npm install serverless@3  # Install Serverless Framework version 3 locally
-          npm install serverless-offline@8.x --save-dev  # Install serverless-offline plugin for Serverless v3
-          npm install serverless-step-functions --save-dev  # If you're using Step Functions, install this plugin
-
-      - name: Check serverless installation
-        run: ./node_modules/.bin/serverless --version  # Use the local installation of serverless
-
-      - name: Deploy with Serverless
+      - name: Deploy to AWS
+        run: serverless deploy
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: us-east-1
-        run: |
-          ./node_modules/.bin/serverless deploy --verbose  # Use the local installation of serverless
