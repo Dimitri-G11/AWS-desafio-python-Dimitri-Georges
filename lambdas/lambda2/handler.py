@@ -4,7 +4,7 @@ import psycopg2
 from datetime import datetime
 import csv
 
-#Dimitri Georges!!
+#Dimitri Georges
 
 ssm = boto3.client('ssm')
 
