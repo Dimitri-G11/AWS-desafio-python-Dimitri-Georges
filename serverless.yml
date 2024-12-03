@@ -2,6 +2,8 @@ service: step-functions-challenge
 
 provider:
   name: aws
+  deploymentBucket:
+    name: Dimitriss2Buckets3
   runtime: python3.9
   region: us-east-1
   environment:
