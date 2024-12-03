@@ -79,6 +79,7 @@ stepFunctions:
 
 
 
+
 plugins:
   - serverless-step-functions
   - serverless-python-requirements
