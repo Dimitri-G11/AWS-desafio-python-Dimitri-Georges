@@ -82,7 +82,7 @@ def handler(event, context):
                 data['number_deaths']
             ))
 
-        # Commit e fechamento da conexão
+    
         conn.commit()
         cursor.close()
         conn.close()
