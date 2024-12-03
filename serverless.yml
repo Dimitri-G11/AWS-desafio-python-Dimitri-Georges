@@ -68,13 +68,15 @@ stepFunctions:
         States:
           Lambda1:
             Type: Task
-            Resource: Fn::Sub: arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${self:provider.stage}-lambda1
+            Resource: 
+              Fn::Sub: arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${self:provider.stage}-lambda1
             Parameters:
               csv_url: "https://dados.antt.gov.br/dataset/ef0171a8-f0df-4817-a4ed-b4ff94d87194/resource/aa60ce3a-033a-4864-81dc-ae32bea866e5/download/demostrativo_acidentes_viaaraucaria.csv"
             Next: Lambda2
           Lambda2:
             Type: Task
-            Resource: Fn::Sub: arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${self:provider.stage}-lambda2
+            Resource: 
+              Fn::Sub: arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${self:provider.stage}-lambda2
             End: true
 
 plugins:
