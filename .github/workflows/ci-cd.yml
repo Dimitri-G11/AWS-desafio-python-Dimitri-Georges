@@ -17,12 +17,6 @@ jobs:
         with:
           node-version: 16
 
-      - name: Clean previous
-        run: |
-          rm -rf .serverless
-          rm -rf node_modules
-          rm -rf .serverless-python-requirements
-
       - name: Install Serverless Framework
         run: npm install -g serverless@3
 
