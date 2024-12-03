@@ -9,21 +9,24 @@ on:
       - main
 
 jobs:
-
-  before_deploy:
-    - name: Install PostgreSQL dependencies
-      run: sudo apt-get install libpq-dev
-
   deploy:
     runs-on: ubuntu-latest
     steps:
+    
       - name: Check out code
         uses: actions/checkout@v3
+
+     
+      - name: Install PostgreSQL dependencies
+        run: sudo apt-get install libpq-dev
+        if: runner.os == 'Linux' 
+
 
       - name: Install Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 16  
+
 
       - name: Install Serverless Framework
         run: npm install -g serverless@3
@@ -31,6 +34,7 @@ jobs:
       - name: Install serverless-python-requirements plugin
         run: npm install --save serverless-python-requirements
 
+ 
       - name: Install serverless-step-functions plugin
         run: npm install --save serverless-step-functions
 
