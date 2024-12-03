@@ -9,6 +9,11 @@ on:
       - main
 
 jobs:
+
+  before_deploy:
+    - name: Install PostgreSQL dependencies
+      run: sudo apt-get install libpq-dev
+
   deploy:
     runs-on: ubuntu-latest
     steps:
