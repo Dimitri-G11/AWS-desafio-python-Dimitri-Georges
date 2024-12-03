@@ -1,3 +1,5 @@
+service: step-functions-challenge
+
 provider:
   name: aws
   runtime: python3.9
@@ -35,14 +37,13 @@ functions:
       - http:
           path: lambda1
           method: post
-
   lambda2:
     handler: lambdas/lambda2/handler.handler
     vpc:
       securityGroupIds:
-        - sg-0250c50609b0a61d5  
+        - sg-0250c50609b0a61d5
       subnetIds:
-        - subnet-08c5033fba30bb485  
+        - subnet-08c5033fba30bb485
 
 resources:
   Resources:
