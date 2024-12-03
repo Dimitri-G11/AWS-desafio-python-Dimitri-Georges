@@ -6,8 +6,7 @@ provider:
   region: us-east-1
   environment:
     S3_BUCKET: "dimitris3"
-    DB_SECRET_ID: "/db-secrets"
-    DB_NAME: "db-name"
+    DB_SECRET_ID: /db-secrets
     DB_PORT: 5432
 
 iamRoleStatements:
