@@ -10,11 +10,9 @@ def handler(event, context):
         bucket_name = 'dimitris3'
         file_name = url.split('/')[-1]
 
-        # Download do CSV
         response = requests.get(url)
         response.raise_for_status()
         
-        # Upload para o S3
         s3.put_object(
             Bucket=bucket_name,
             Key=file_name,
